@@ -10,7 +10,6 @@ export function polyLinesReducer(state = initalState, action: any) {
     case ADD_POLYLINE:
       return {...state, polyLines: [...state.polyLines, action.payload]}
     case CLEAR_POLYLINE:
-      console.log("CLEARING");
       return {...state, polyLines: []};
     default:
       return state
