@@ -1,0 +1,2 @@
+export const ADD_POLYLINE = 'ADD_POLYLINE';
+export const CLEAR_POLYLINE = 'CLEAR_POLYLINE';
