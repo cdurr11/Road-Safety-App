@@ -11,17 +11,18 @@ class App extends React.Component {
     }
 
   processPoints(points) {
-    let finalPoints = [];
-    points.forEach(point => {
-      finalPoints.push([point.location.latitude, point.location.longitude]);
-    });
-    this.props.addSnappedPolyline(finalPoints);
-
+    if (points.length > 0) {
+      let finalPoints = [];
+      points.forEach(point => {
+        finalPoints.push([point.location.latitude, point.location.longitude]);
+      });
+      this.props.addSnappedPolyline(finalPoints);
+    }
   }
 
   snapPolyline() {
       const lineData = {points: this.props.polyLines};
-      fetch('http://localhost:5000/', {
+      fetch('http://localhost:5000/analyze-route', {
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'

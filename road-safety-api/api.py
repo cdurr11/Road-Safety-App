@@ -21,13 +21,11 @@ def generate_path_request(points):
     return path_string
         
 
-@app.route('/', methods=['GET', 'POST'])
-def hello_world():
+@app.route('/analyze-route', methods=['GET', 'POST'])
+def analyze_route():
     data = request.json
-    response = flask.jsonify({'some': 'data'})
     points =  data['points']
     path_string = generate_path_request(points)
-    response.headers.add('Access-Control-Allow-Origin', '*')
     response_roads = requests.get('https://roads.googleapis.com/v1/snapToRoads?path='+path_string+'&interpolate=true&key='+api_key).content
     return response_roads
 
