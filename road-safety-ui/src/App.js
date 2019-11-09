@@ -2,7 +2,7 @@ import React from 'react';
 import './css/app.css';
 import LeafletMap from "./map.component";
 import {connect} from 'react-redux';
-import {clearPolyline} from "./redux/actions";
+import {clearPolyline, addSnappedPolyline} from "./redux/actions";
 
 class App extends React.Component {
     constructor(props) {
@@ -10,16 +10,27 @@ class App extends React.Component {
         this.snapPolyline = this.snapPolyline.bind(this);
     }
 
+  processPoints(points) {
+    let finalPoints = [];
+    points.forEach(point => {
+      finalPoints.push([point.location.latitude, point.location.longitude]);
+    });
+    this.props.addSnappedPolyline(finalPoints);
 
+  }
 
   snapPolyline() {
       const lineData = {points: this.props.polyLines};
       fetch('http://localhost:5000/', {
-          method: 'post',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }, 
+          method: 'POST',
           body: JSON.stringify(lineData)
       })
-          .then( response => response.json())
-          .then(data => {console.log(data);});
+          .then(response => response.json())
+          .then(data => {this.processPoints(data.snappedPoints); console.log(data);});
   }
 
   render() {
@@ -38,8 +49,15 @@ class App extends React.Component {
   }
 }
 
+const mapDispatchToProps = dispatch => {
+  return {
+    clearPolyline,
+    addSnappedPolyline,
+  }
+}
+
 const mapStateToProps = (state) => {
     return { polyLines: state.polyLines };
 };
 
-export default connect(mapStateToProps, {clearPolyline})(App);
+export default connect(mapStateToProps, {clearPolyline, addSnappedPolyline})(App);
