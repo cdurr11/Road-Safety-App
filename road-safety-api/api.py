@@ -7,9 +7,13 @@ from flask_cors import CORS
 from API_KEY import api_key, weather_api_key
 from weather_constants import weather_const_map
 
+from models import db_session, alameda, san_francisco, san_mateo
+
 app = Flask(__name__)
 CORS(app)
 
+# Working pymysql command
+# print(db_session.query(alameda).filter(alameda.CASE_ID == 5414040).first().COLLISION_TIME)
 
 def generate_path_request(points):
     path_string = ""
