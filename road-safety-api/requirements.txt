@@ -3,3 +3,5 @@ flask
 flask-cors
 pymysql
 sqlalchemy
+sklearn
+matplotlib
