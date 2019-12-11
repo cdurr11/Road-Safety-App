@@ -6,8 +6,15 @@ import flask
 from flask_cors import CORS
 from API_KEY import api_key, weather_api_key
 from weather_constants import weather_const_map
+import sklearn
+import numpy as np
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn import datasets, linear_model
+import matplotlib.pyplot as plt
+from classifier import clf
 
-from models import db_session, alameda, san_francisco, san_mateo
+
+# from models import db_session, alameda, san_francisco, san_mateo
 
 app = Flask(__name__)
 CORS(app)
@@ -23,7 +30,7 @@ def generate_path_request(points):
             path_string += "|"
     
     return path_string
-        
+
 def extract_roads(roads_api_response):
     place_ids = set([])
     cities = set([])
@@ -71,10 +78,22 @@ def get_weather(interpolated_points):
         latitude = str(interpolated_points[point_i]["location"]["latitude"])
         longitude = str(interpolated_points[point_i]["location"]["longitude"])
         response = requests.get("https://api.openweathermap.org/data/2.5/weather?lat="+latitude+"&lon="+longitude+"&APPID="+weather_api_key).content
-        
+        print("RESPONSE:", json.loads(response))
         weather_id = json.loads(response)['weather'][0]['id']
+        rain = 0
+        snow = 0
+        try:
+            rain = int(json.loads(response)['rain']['3h'])
+        except:
+            pass
+        try:
+            snow = int(json.loads(response)['snow']['3h'])
+        except:
+            pass
+
         weather_type = weather_const_map[weather_id // 100]
-        final_weather.append(latitude, longitude, weather_type)
+        # lat, long, weather_type, rain (mm), snow(mm)
+        final_weather.append((latitude, longitude, weather_type, rain, snow))
     
     return final_weather
 
@@ -87,6 +106,8 @@ def analyze_route():
     interpolated_points = fetch_interpolated_points(subdivided_points)
     roads = extract_roads(interpolated_points)
     route_weather = get_weather(interpolated_points)
+    print(interpolated_points)
+    print(route_weather)
     response = {"snappedPoints": interpolated_points}
     return response
 
