@@ -1,6 +1,7 @@
 from sklearn import svm
 from sklearn import preprocessing
 import pandas as pd
+from sklearn.linear_model import LogisticRegression
 
 
 def get_scaled_value(value, mean, std):
@@ -41,20 +42,24 @@ data_set[['Snowfall']] = get_scaled_value(data_set[['Snowfall']], avg_snow_mean,
 
 
 X = data_set[['hour', 'month', 'volume', 'Avg Temp', 'Precipitation Water Equiv', 'Snowfall']]
-train_x = X.iloc[:-300000]
-train_y = y.iloc[:-300000]
 
-print(train_x.shape)
-print(train_y.shape)
-print("--------")
+X = X.to_numpy()
+y = y.to_numpy()
 
+train_x = X[:-300000, :]
+train_y = y[:-300000, 0].tolist()
+test_x = X[-300000:, :]
+test_y = y[-300000:, 0].tolist()
 
-test_x = X.iloc[-300000:]
-test_y = y.iloc[-300000:]
+clf = LogisticRegression(random_state=0, verbose=1, class_weight='balanced').fit(train_x, train_y)
+print('done fitting')
+preds = clf.predict_proba(test_x)
+print(clf.score(test_x, test_y))
+print(preds[0][:50])
+print(test_y[:50])
 
-print(test_x.shape)
-print(test_y.shape)
+# print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
 
-clf = svm.SVC()
-clf.fit(X, y)
-print("Done Fitting")
+# clf = svm.SVC(verbose=True)
+# clf.fit(train_x, train_y)
+# print("Done Fitting")
