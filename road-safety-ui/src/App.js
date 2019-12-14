@@ -32,7 +32,7 @@ class App extends React.Component {
       })
           .then(response => response.json())
           .then(data => {this.processPoints(data.snappedPoints); console.log(data); 
-            alert("Our model predicted a crash on " + data.value[0] + " out of " + data.value[1] + " points along your route")});
+            alert("Your safety score for this route is: " + data.value[0] + " out of 100")});
   }
 
   render() {

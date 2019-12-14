@@ -11,37 +11,25 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import datasets, linear_model
 import matplotlib.pyplot as plt
-from classifier import avg_temp_mean 
-from classifier import avg_temp_std
-from classifier import get_scaled_value
-
-from classifier import avg_rain_mean 
-from classifier import avg_rain_std
-
-from classifier import avg_snow_mean 
-from classifier import avg_snow_std
-
 import pandas as pd
-
 import random
-
-
-
-
-
 import datetime
+import re
+import pickle
+
 dt = datetime.datetime.now()
 
-# from classifier import clf
-
-
-# from models import db_session, alameda, san_francisco, san_mateo
+clf = pickle.load(open('../random_forest.sav', 'rb'))
+street_data = pd.read_csv("../street_segments.csv", index_col=0)
 
 app = Flask(__name__)
 CORS(app)
 
+
+def get_scaled_value(value, mean, std):
+    return (value - mean)/ std
+
 # Working pymysql command
-# print(db_session.query(alameda).filter(alameda.CASE_ID == 5414040).first().COLLISION_TIME)
 
 def generate_path_request(points):
     path_string = ""
@@ -53,25 +41,33 @@ def generate_path_request(points):
     return path_string
 
 def extract_roads(roads_api_response):
-    place_ids = set([])
-    cities = set([])
+    place_ids = []
     for point in roads_api_response:
         current_placeId = point['placeId']
-        if current_placeId not in place_ids:
-            place_ids.add(current_placeId)
-    roads = set([])
+        place_ids.append(current_placeId)
+    roads = []
     for placeId in place_ids:
         place_query = "https://maps.googleapis.com/maps/api/place/details/json?place_id="+placeId+"&fields=name,rating,formatted_phone_number&key="+api_key
         place = requests.get(place_query).content
         place_json = json.loads(place)
-        print(place_json)
         try:
             road_name = place_json['result']['name']
+            corrected_name = re.sub(r'[0-9]', '', road_name)
+            corrected_name = re.sub(r'[^\w]', '', corrected_name)
+            corrected_name = re.sub(r'Ave', '', corrected_name)
+            corrected_name = re.sub(r'St', '', corrected_name)
+            corrected_name = re.sub(r'AVE', '', corrected_name)
+            corrected_name = re.sub(r'ST', '', corrected_name)
+            corrected_name = re.sub(r'DR', '', corrected_name)
+            corrected_name = re.sub(r'Dr', '', corrected_name)
+            corrected_name = re.sub(r'PL', '', corrected_name)
+            corrected_name = re.sub(r'Pl', '', corrected_name)
+            corrected_name = re.sub(r'Rd', '', corrected_name)
+            corrected_name = re.sub(r'RD', '', corrected_name)
         except:
             pass
 
-        if road_name not in roads:
-            roads.add(road_name)
+        roads.append(corrected_name)
     return roads
 
 #returns a 2D list of points
@@ -105,7 +101,6 @@ def get_weather(interpolated_points):
         latitude = str(interpolated_points[point_i]["location"]["latitude"])
         longitude = str(interpolated_points[point_i]["location"]["longitude"])
         response = requests.get("https://api.openweathermap.org/data/2.5/weather?lat="+latitude+"&lon="+longitude+"&APPID="+weather_api_key).content
-        print("RESPONSE:", json.loads(response))
         weather_id = json.loads(response)['weather'][0]['id']
         temp = int(json.loads(response)['main']['temp'])
         rain = 0
@@ -136,55 +131,128 @@ def normalize_hour(hour):
 def normalize_month(month):
     return (month - 6) / 6
 
-def find_velocity():
-    pass
+def find_closest_row(latitude, longitude, road, df):
 
-def create_pandas_df(weather, month, hour):
-    HOUR = 0
-    MONTH = 1
-    VOLUME = 2
-    AVG_TEMP = 3
-    PREC_WATER = 4
-    PREC_SNOW = 5
+    min_dist = float('inf')
+    best_row = None
+    for index, row in df.iterrows():
+        lat = float(row['latitude'])
+        lon = float(row['longitude'])
+        dist = ((latitude - lat)**2 + (longitude - lon)**2)**(0.5)
+        if dist < min_dist:
+            min_dist = dist
+            best_row = row
 
-    cols = ['hour', 'month', 'volume', 'Avg Temp', 'Precipitation Water Equiv', 'Snowfall']
-    df_list = []
-    # 'hour', 'month', 'volume', 'Avg Temp', 'Precipitation Water Equiv', 'Snowfall'
-    # TODO 1 hot
-    for element in weather:
-        current_list = []
-        current_list.append(normalize_hour(hour))
-        current_list.append(normalize_month(month))
-        # TODO normalize
-        current_list.append(10000)
-        current_list.append(get_scaled_value(element[5], avg_temp_mean.iloc[0], avg_temp_std.iloc[0]))
-        current_list.append(get_scaled_value(element[3], avg_rain_mean.iloc[0], avg_rain_std.iloc[0]))
-        current_list.append(get_scaled_value(element[4], avg_snow_mean.iloc[0], avg_snow_std.iloc[0]))
-        df_list.append(current_list)
+    return best_row
 
-    print(df_list)
+def one_hot_day(day):
+    one_hot = []
+    for i in range(7):
+        if i == day:
+            one_hot.append(1)
+    else:
+        one_hot.append(0)
+    return one_hot
+
+
+def make_safety_score(interpolated_points, safety_df, roads):
+
+    safety_scores = []
     
-    return pd.DataFrame(data = df_list, columns=cols)
+    for point_i in range(0, len(interpolated_points), 50):
+        print(type(point_i))
+        latitude = float(interpolated_points[point_i]["location"]["latitude"])
+        longitude = float(interpolated_points[point_i]["location"]["longitude"])
+        road = roads[point_i].upper()
+        print("road", road)
+        print("safety_fd", safety_df['street_nam'])
+        cur_df = safety_df[safety_df['street_nam'] == road]
+        if cur_df.shape[0] == 0:
+            continue
+        row = find_closest_row(latitude, longitude, road, cur_df)
+        safety_scores.append(row['safety_score'])
+    
+    if len(safety_scores) == 0:
+        return "ERROR"
+        
+    return sum(safety_scores) / len(safety_scores)
 
+    
+def get_model(street_data, weather):
+    max_volume = 165200
+    min_volume = 0
+    min_lat = 41.644670131999995
+    max_lat = 42.022779861
+    min_long = -87.933976504
+    max_long = -87.52458738699998
+    avg_temp_mean = 52.736361
+    avg_temp_std = 20.625818
+    avg_rain_mean = 0.117716
+    avg_rain_std = 0.329548
+    avg_snow_mean = 0.012092
+    avg_snow_std = 0.104858
+    length_mean = 439.04927
+    length_std = 207.835484
+
+    weather = weather[0]
+
+    month = dt.month
+    hour = dt.hour
+    weekday = datetime.datetime.today().weekday()
+
+    street_data['hour'] = hour
+    street_data['month'] = month
+    street_data['Avg Temp'] = weather[5]
+    street_data['Snowfall'] = weather[4]
+    street_data['Precipitation Water Equiv'] = weather[3]
+    street_data['weekday'] = weekday
+
+    street_data[['hour']] = (street_data[['hour']] - 12)/ 12
+    street_data[['month']] = (street_data[['month']] - 6) / 6
+
+    street_data = pd.concat([street_data,pd.get_dummies(street_data['weekday'], prefix='weekday')],axis=1)
+    street_data = street_data.drop(['weekday'], axis=1)
+
+    street_data[['Avg Temp']] = get_scaled_value(street_data[['Avg Temp']], avg_temp_mean, avg_temp_std)
+    street_data[['Precipitation Water Equiv']] = get_scaled_value(street_data[['Precipitation Water Equiv']], avg_rain_mean, avg_rain_std)
+    street_data[['Snowfall']] = get_scaled_value(street_data[['Snowfall']], avg_snow_mean, avg_snow_std)
+    street_data[['length']] = get_scaled_value(street_data[['length']], avg_snow_mean, avg_snow_std)
+
+    one_hot_cols = ['weekday_0',
+        'weekday_1', 'weekday_2', 'weekday_3', 'weekday_4', 'weekday_5',
+        'weekday_6', 'class_1', 'class_2', 'class_3', 'class_4', 'class_5',
+        'class_7', 'class_9', 'class_99', 'class_E', 'class_RIV', 'class_S']
+
+    cols = set(street_data.columns.tolist())
+    for col in one_hot_cols:
+        if col not in cols:
+            street_data[col] = 0
+
+    X = street_data[['hour', 'latitude', 'length', 'longitude', 'month', 'volume',
+        'Avg Temp', 'Precipitation Water Equiv', 'Snowfall', 'weekday_0',
+        'weekday_1', 'weekday_2', 'weekday_3', 'weekday_4', 'weekday_5',
+        'weekday_6', 'class_1', 'class_2', 'class_3', 'class_4', 'class_5',
+        'class_7', 'class_9', 'class_99', 'class_E', 'class_RIV', 'class_S',
+        'one_way']]
+
+    preds_y = clf.predict_proba(X)
+    safety_scores = pd.Series(preds_y[:,0].tolist())
+    street_segs = street_data[['latitude', 'longitude', 'street_nam']]
+    street_segs['safety_score'] = safety_scores.values
+    return street_segs
 
 @app.route('/analyze-route', methods=['GET', 'POST'])
 def analyze_route():
     data = request.json
     points =  data['points']
-
-    month = dt.month
-    hour = dt.hour
-    val = random.choice([0,0,0,1])
     subdivided_points = process_points(points)
     interpolated_points = fetch_interpolated_points(subdivided_points)
     roads = extract_roads(interpolated_points)
     route_weather = get_weather(interpolated_points)
-    # print(interpolated_points)
-    # print(route_weather)
-    current_df = create_pandas_df(route_weather, month, hour)
-
-    print(current_df)
-    response = {"snappedPoints": interpolated_points, "value":[val, len(interpolated_points)]}
+    safety_df = get_model(street_data, route_weather)
+    safety_score = make_safety_score(interpolated_points, safety_df, roads)
+    
+    response = {"snappedPoints": interpolated_points, "value":[safety_score]}
     return response
 
 if __name__ == "__main__":

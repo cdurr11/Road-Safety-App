@@ -6,8 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 import pickle
 
-clf = pickle.load(open('random_forest.sav', 'rb'))
-street_data = pd.read_csv("street_segments.csv", index_col=0)
+# clf = pickle.load(open('random_forest.sav', 'rb'))
+# street_data = pd.read_csv("street_segments.csv", index_col=0)
 
 def get_scaled_value(value, mean, std):
     return (value - mean)/ std
