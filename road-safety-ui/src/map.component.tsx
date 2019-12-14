@@ -1,9 +1,12 @@
 import React from 'react';
 import "./css/map.css";
-import {Map, Marker, TileLayer, Popup, Viewport, LatLng, Polyline} from "react-leaflet";
+import {Map, Marker, TileLayer, Popup, Viewport, LatLng, Polyline, GeoJSON} from "react-leaflet";
 import {LatLngExpression, latLng} from "leaflet";
 import {connect} from 'react-redux';
 import {addPolyline} from "./redux/actions";
+// @ts-ignore
+// import chicago from './chicago2.json';
+// import chicago from './basic.json'
 
 interface LeafletMapProps {
   addPolyline: any,
@@ -16,7 +19,7 @@ interface LeafletMapsState {
     polyLinePoints: number[][];
     zoom: number;
     latitude: number;
-    longitude: number;
+        longitude: number;
 }
 
 class LeafletMap extends React.Component<LeafletMapProps, LeafletMapsState> {
@@ -42,7 +45,30 @@ class LeafletMap extends React.Component<LeafletMapProps, LeafletMapsState> {
                         longitude: e.target.getCenter().lng
                     });
     }
+
+    fetchJSON(url: string) {
+        return fetch(url, {
+            headers : { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+           }}).then(function(response) {
+            console.log(response);
+            return response.json();
+          });
+    }
+
+    componentWillMount() {
+        // this.setState({data: chicago});
+        // console.log(chicago);
+        // var newData = this.fetchJSON("src/chicago.geojson").then(() => {console.log("2")});
+        // var newData = this.fetchJSON("./src/chicago.geojson").then((newData) => {this.setState({data:newData})});
+        // var newData = this.fetchJSON("./src/chicago.json").then((newData) => {this.setState({data:newData})});
+        // this.setState({data: newData});
+        // this.setState({data: this.fetchJSON("road-safety-ui/src/Street Center Lines (1).geojson")});
+    }
+
     render() {
+        // console.log("data", this.state.data.data);
         let view : Viewport = {center: [this.state.latitude, this.state.longitude], zoom: this.state.zoom };
         return (
             <div>
@@ -53,6 +79,9 @@ class LeafletMap extends React.Component<LeafletMapProps, LeafletMapsState> {
                             attribution="&copy; <a href=&quot;http://osm.org/copyright&quot;>OpenStreetMap</a> contributors"
                         />
                         <Polyline positions={this.props.polyLines}/>
+                        {/*
+                            // @ts-ignore */}
+                        {/* <GeoJSON key={"geojson"} data={chicago}/> */}
                     </Map>
                 </div>
             </div>

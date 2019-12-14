@@ -31,7 +31,8 @@ class App extends React.Component {
           body: JSON.stringify(lineData)
       })
           .then(response => response.json())
-          .then(data => {this.processPoints(data.snappedPoints); console.log(data);});
+          .then(data => {this.processPoints(data.snappedPoints); console.log(data); 
+            alert("Our model predicted a crash on " + data.value[0] + " out of " + data.value[1] + " points along your route")});
   }
 
   render() {

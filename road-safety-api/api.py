@@ -11,7 +11,28 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import datasets, linear_model
 import matplotlib.pyplot as plt
-from classifier import clf
+from classifier import avg_temp_mean 
+from classifier import avg_temp_std
+from classifier import get_scaled_value
+
+from classifier import avg_rain_mean 
+from classifier import avg_rain_std
+
+from classifier import avg_snow_mean 
+from classifier import avg_snow_std
+
+import pandas as pd
+
+import random
+
+
+
+
+
+import datetime
+dt = datetime.datetime.now()
+
+# from classifier import clf
 
 
 # from models import db_session, alameda, san_francisco, san_mateo
@@ -72,14 +93,21 @@ def fetch_interpolated_points(subdivided_points):
 
     return all_points
 
+def convert_precip_to_inches(precip_mm):
+    return precip_mm * 0.0393701
+
+def convert_to_fahrenheit(temp_kelvin):
+    return ((temp_kelvin - 273.15)* (9 / 5)) + 5
+
 def get_weather(interpolated_points):
     final_weather = []
-    for point_i in range(0, len(interpolated_points), 50):
+    for point_i in range(0, len(interpolated_points)):
         latitude = str(interpolated_points[point_i]["location"]["latitude"])
         longitude = str(interpolated_points[point_i]["location"]["longitude"])
         response = requests.get("https://api.openweathermap.org/data/2.5/weather?lat="+latitude+"&lon="+longitude+"&APPID="+weather_api_key).content
         print("RESPONSE:", json.loads(response))
         weather_id = json.loads(response)['weather'][0]['id']
+        temp = int(json.loads(response)['main']['temp'])
         rain = 0
         snow = 0
         try:
@@ -91,24 +119,72 @@ def get_weather(interpolated_points):
         except:
             pass
 
+        rain = convert_precip_to_inches(rain)
+        snow = convert_precip_to_inches(snow)
+        temp = convert_to_fahrenheit(temp)
+
         weather_type = weather_const_map[weather_id // 100]
         # lat, long, weather_type, rain (mm), snow(mm)
-        final_weather.append((latitude, longitude, weather_type, rain, snow))
+        final_weather.append((latitude, longitude, weather_type, rain, snow, temp))
     
     return final_weather
+
+#weather is a list, hour and day are constant
+def normalize_hour(hour):
+    return (hour - 12)/ 12
+
+def normalize_month(month):
+    return (month - 6) / 6
+
+def find_velocity():
+    pass
+
+def create_pandas_df(weather, month, hour):
+    HOUR = 0
+    MONTH = 1
+    VOLUME = 2
+    AVG_TEMP = 3
+    PREC_WATER = 4
+    PREC_SNOW = 5
+
+    cols = ['hour', 'month', 'volume', 'Avg Temp', 'Precipitation Water Equiv', 'Snowfall']
+    df_list = []
+    # 'hour', 'month', 'volume', 'Avg Temp', 'Precipitation Water Equiv', 'Snowfall'
+    # TODO 1 hot
+    for element in weather:
+        current_list = []
+        current_list.append(normalize_hour(hour))
+        current_list.append(normalize_month(month))
+        # TODO normalize
+        current_list.append(10000)
+        current_list.append(get_scaled_value(element[5], avg_temp_mean.iloc[0], avg_temp_std.iloc[0]))
+        current_list.append(get_scaled_value(element[3], avg_rain_mean.iloc[0], avg_rain_std.iloc[0]))
+        current_list.append(get_scaled_value(element[4], avg_snow_mean.iloc[0], avg_snow_std.iloc[0]))
+        df_list.append(current_list)
+
+    print(df_list)
+    
+    return pd.DataFrame(data = df_list, columns=cols)
+
 
 @app.route('/analyze-route', methods=['GET', 'POST'])
 def analyze_route():
     data = request.json
     points =  data['points']
 
+    month = dt.month
+    hour = dt.hour
+    val = random.choice([0,0,0,1])
     subdivided_points = process_points(points)
     interpolated_points = fetch_interpolated_points(subdivided_points)
     roads = extract_roads(interpolated_points)
     route_weather = get_weather(interpolated_points)
-    print(interpolated_points)
-    print(route_weather)
-    response = {"snappedPoints": interpolated_points}
+    # print(interpolated_points)
+    # print(route_weather)
+    current_df = create_pandas_df(route_weather, month, hour)
+
+    print(current_df)
+    response = {"snappedPoints": interpolated_points, "value":[val, len(interpolated_points)]}
     return response
 
 if __name__ == "__main__":
