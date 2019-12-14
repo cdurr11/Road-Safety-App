@@ -12,7 +12,6 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import datasets, linear_model
 import matplotlib.pyplot as plt
 import pandas as pd
-import random
 import datetime
 import re
 import pickle
