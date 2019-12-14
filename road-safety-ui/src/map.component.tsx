@@ -52,23 +52,14 @@ class LeafletMap extends React.Component<LeafletMapProps, LeafletMapsState> {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
            }}).then(function(response) {
-            console.log(response);
             return response.json();
           });
     }
 
     componentWillMount() {
-        // this.setState({data: chicago});
-        // console.log(chicago);
-        // var newData = this.fetchJSON("src/chicago.geojson").then(() => {console.log("2")});
-        // var newData = this.fetchJSON("./src/chicago.geojson").then((newData) => {this.setState({data:newData})});
-        // var newData = this.fetchJSON("./src/chicago.json").then((newData) => {this.setState({data:newData})});
-        // this.setState({data: newData});
-        // this.setState({data: this.fetchJSON("road-safety-ui/src/Street Center Lines (1).geojson")});
     }
 
     render() {
-        // console.log("data", this.state.data.data);
         let view : Viewport = {center: [this.state.latitude, this.state.longitude], zoom: this.state.zoom };
         return (
             <div>

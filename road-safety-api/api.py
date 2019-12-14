@@ -76,7 +76,6 @@ def process_points(points):
     for i in range(0, (len(points) // 100) + 1, 100):
         final_points_arr.append(points[i:min(len(points), i + 100)])
     
-    # print(final_points_arr)
     return final_points_arr
 
 def fetch_interpolated_points(subdivided_points):
@@ -159,13 +158,11 @@ def make_safety_score(interpolated_points, safety_df, roads):
 
     safety_scores = []
     
-    for point_i in range(0, len(interpolated_points), 50):
-        print(type(point_i))
+    for point_i in range(0, len(interpolated_points), 10):
         latitude = float(interpolated_points[point_i]["location"]["latitude"])
         longitude = float(interpolated_points[point_i]["location"]["longitude"])
+        
         road = roads[point_i].upper()
-        print("road", road)
-        print("safety_fd", safety_df['street_nam'])
         cur_df = safety_df[safety_df['street_nam'] == road]
         if cur_df.shape[0] == 0:
             continue
