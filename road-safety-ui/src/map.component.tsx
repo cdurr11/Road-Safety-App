@@ -26,8 +26,8 @@ class LeafletMap extends React.Component<LeafletMapProps, LeafletMapsState> {
         drawingPolyline: false,
         polyLinePoints: [],
         zoom: 13,
-        latitude: 37.7749,
-        longitude: -122.4194,
+        latitude: 41.8781,
+        longitude: -87.6298,
     };
 
     handleAddPolyline = (e: any) => {
